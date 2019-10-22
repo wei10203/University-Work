@@ -1,0 +1,67 @@
+#include<cstdlib>
+#include<iostream>
+#include <time.h>
+#include<algorithm>
+#define MAX 100000
+using namespace std;
+void random(int arr[],int n)
+{
+    srand(time(NULL));
+    int i, j, temp;
+    for (i = n -1; i > 0; i--)
+    {
+        j = rand()%(i + 1);
+        temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+	
+    }	
+}
+ 
+
+int partition(int arr[], int p, int r)
+{
+    int pivotIndex = p + rand()%(r - p + 1); 
+    int pivot;
+    int i = p - 1;
+    int j;
+    pivot = arr[pivotIndex];
+    swap(arr[pivotIndex], arr[r]);
+    for (j = p; j < r; j++)
+    {
+        if (arr[j] < pivot)
+        {
+            i++;
+            swap(arr[i], arr[j]);
+        }
+ 
+    }
+    swap(arr[i+1], arr[r]);
+    return i + 1;
+}
+ 
+void quicksort(int arr[], int p, int q)
+{
+    int j;
+    if (p < q)
+    {
+        j = partition(arr, p, q);
+        quicksort(arr, p, j-1);
+        quicksort(arr, j+1, q);
+    }
+}
+int main()
+{
+    int i;
+	int n;
+	cin >> n;
+    int arr[MAX];
+    for (i = 0; i < n; i++)
+        cin>>arr[i] ;
+    random(arr,n); //To randomize the array
+    quicksort(arr, 0, n-1); //function to sort the elements of array
+	for (i = 0; i < n; i++)
+		cout << arr[i] << "\n";
+	system("pause");
+    return 0;
+}
