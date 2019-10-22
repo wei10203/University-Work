@@ -1,0 +1,65 @@
+
+#include<iostream>
+using namespace std;
+
+int n, m;
+int set[1005];
+int edge[25005][3];
+int compare(const void *a, const void*b){
+	int *p = (int*)a;
+	int *q = (int*)b;
+	return p[2] - q[2];
+}
+int findSet(int now){
+	if (set[now] != now)
+		set[now] = findSet(set[now]);
+	return set[now];
+
+}
+void setedge()
+{
+	int i;
+	int f;
+	int setA, setB;
+	for (i = f = 0; i<m; ++i)
+	{
+		setA = findSet(edge[i][0]);
+		setB = findSet(edge[i][1]);
+		if (setA != setB){
+			set[setA] = setB;
+		}
+		else {
+			if (f)
+			{
+				cout << " ";
+			}
+			else f = 1;
+			{
+				cout << edge[i][2];
+			}
+		}
+	}
+	if (!f)
+		cout << "forest";
+	cout << "\n";
+
+}
+int main()
+{
+	int i;
+	while (cin >> n >> m&&( n | m))
+	{
+		for (i = 0; i<n; ++i)
+			set[i] = i;
+		for (i = 0; i<m; ++i){
+			cin >> edge[i][0]>> edge[i][1]>> edge[i][2];
+		}
+		qsort(edge, m, sizeof(edge[0]), compare);
+		setedge();
+	}
+
+	system("pause");
+
+
+	return 0;
+}
