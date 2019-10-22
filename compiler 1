@@ -1,0 +1,291 @@
+//////global.h///////////
+#include<iostream>
+#include<stdio.h>
+#include<ctype.h>
+#include<string>
+using namespace std;
+#define BSIZE 128	
+#define NONE  -1
+#define EOS  '\0'
+#define ID 259
+#define DONE 260
+#define STRMAX 999			
+#define SYMMAX 100			
+#define OR 263
+#define AND 264
+#define TRUE 261
+#define FALSE 262
+
+struct entry{		
+	char *lexptr;
+	int token;
+};
+
+struct entry symtable[];		
+char lexbuf[BSIZE];
+int lineno = 1;
+int tokenval = NONE;				
+int lookahead;
+char lexemes[STRMAX];
+int lastchar = -1;					
+struct entry symtable[SYMMAX];
+int lastentry = 0;			
+
+void start();
+void dumpIDs();
+void stmtseq();
+void stmtesqlist();
+void assignment();
+void moreterms();
+void morefactors();
+int lexan();
+void expr();
+void term();
+void factor();
+void match(int t);
+void emit(int t, int val);
+int lookup(char s[]);
+int insert(char s[], int tok);
+void init();
+void error(char *m);
+
+bool lorf = 0;
+bool ch_semicolon = 0;
+////////////main.c/////////////
+int main()
+{
+	start();
+	system("pause");
+	exit(0);			
+}
+
+void start()
+{
+	stmtseq();			
+	dumpIDs();
+}
+void dumpIDs()
+{
+	cout << "%%IDs:\t";
+	for (int z = 1; z < lastentry+1; z++)
+	{
+		if (symtable[z].token==ID)
+			cout << symtable[z].lexptr << "\t";
+	}
+}
+void stmtseq()			
+{
+	lookahead = lexan();
+	assignment();
+	stmtesqlist();
+}
+
+void stmtesqlist()
+{
+	switch (lookahead)
+	{
+	case ';':
+		match(';');
+		ch_semicolon = 1;
+		assignment();
+		ch_semicolon = 0;
+		stmtesqlist();
+		break;
+	default:
+		return;
+	}
+}
+
+void assignment()
+{
+	match(ID);
+	lorf = 0;
+	emit(ID, tokenval);
+	match('=');
+	expr();
+	cout << "=" << endl;
+}
+//////////lexer.c/////////////
+int lexan()		
+{
+	int t;
+	while ((t=getchar())!=EOF)
+	{
+		if (t == ' ' || t == '\t')
+			;							
+		else if (t == '\n'&& ch_semicolon==1)
+		{
+			ch_semicolon = 0;
+			tokenval = NONE;
+			return t;
+		}
+		else if (isalpha(t))			
+		{
+			int p, b = 0;
+			while (isalnum(t))			
+			{
+				lexbuf[b] = t;
+				t = getchar();			
+				b = b + 1;
+				if (b >= BSIZE)
+					error("compiler error");
+			}
+			lexbuf[b] = EOS;
+			if (t != EOF)
+				ungetc(t,stdin);
+			p = lookup(lexbuf);
+			if (p == 0 && lexbuf[0] == 'o'&&lexbuf[1] == 'r')
+			{
+				p = insert(lexbuf, OR);
+			}
+			if (p == 0 && lexbuf[0] == 'a'&&lexbuf[1] == 'n'&&lexbuf[2] == 'd')
+			{
+
+				p = insert(lexbuf, AND);
+			}
+			if (p == 0 && lexbuf[0] == 't'&&lexbuf[1] == 'r'&&lexbuf[2] == 'u'&&lexbuf[3] == 'e')
+				p = insert(lexbuf, TRUE);
+			if (p == 0 && lexbuf[0] == 'f'&&lexbuf[1] == 'a'&&lexbuf[2] == 'l'&&lexbuf[3] == 's'&&lexbuf[4]=='e')
+				p = insert(lexbuf, FALSE);
+			if (p == 0)
+			{
+				p = insert(lexbuf, ID);
+			}
+			tokenval = p;
+			return symtable[p].token;
+		}
+		else if (t == EOF)
+			return DONE;
+		else if (t == '=')
+			return t;
+		else
+		{
+			tokenval = NONE;
+			return t;
+		}
+	}
+}
+
+////////parser.c////////////
+
+void expr()
+{
+	term();
+	moreterms();
+}
+void term()
+{
+	factor();
+	morefactors();
+}
+
+void moreterms()
+{
+	int t;
+	switch (lookahead)
+	{
+	case OR:
+		t = lookahead;
+		match(OR); term(); emit(OR,tokenval);break;
+		moreterms();
+	default:
+		return;
+	}
+}
+void factor()
+{
+	switch (lookahead){
+	case '(':
+		match('('); expr(); match(')'); break;
+	case TRUE:
+		emit(TRUE, tokenval); match(TRUE); break;
+	case FALSE:
+		emit(FALSE, tokenval); match(FALSE); break;
+	case ID:
+		lorf = 1;
+		emit(ID, tokenval); match(ID); 
+		break;
+	default:
+		error("syntax error");
+	}
+}
+void morefactors()
+{
+	int t;
+	switch (lookahead)
+	{
+	case AND:
+		t = lookahead;
+		match(AND); factor(); emit(AND,tokenval); break;
+		morefactors();
+	default:
+		return;
+	}
+}
+void match(int t)
+{
+	if (lookahead == t)
+	{
+		lookahead = lexan();
+	}
+	else error("syntax error");
+}
+
+//////emitter.c/////////
+void emit(int t, int tval)		
+{
+	switch (t){
+	case ID:						
+		if (lorf==0)
+			cout << "push lvalue " << symtable[tval].lexptr << endl;
+		else if (lorf==1)
+			cout << "push rvalue " << symtable[tval].lexptr << endl; 
+		break;
+	case OR:
+		cout << "or" << endl; break;
+	case AND:
+		cout << "and" << endl; break;
+	case TRUE:
+		cout << "push true" << endl; break;
+	case FALSE:
+		cout << "push false" << endl; break;
+	default:
+		cout <<"token" <<t << "tokenval" << tval<<endl;
+	}
+}
+
+//////////symbol.c/////////
+int lookup(char s[])				
+{
+	int p;
+	for (p = lastentry; p > 0;p=p-1)
+	if (strcmp(symtable[p].lexptr, s) == 0)
+		return p;
+	return 0;
+}
+
+int insert(char s[], int tok)				
+{
+	int len;
+	len = strlen(s);			
+	if (lastentry + 1 >= SYMMAX)
+		error("symbol table full");
+	if (lastchar + len + 1 >= STRMAX)
+		error("lexemes array full");
+	lastentry = lastentry + 1;
+	symtable[lastentry].token = tok;
+	symtable[lastentry].lexptr = &lexemes[lastchar + 1];
+	lastchar = lastchar + len + 1;
+	strcpy_s(symtable[lastentry].lexptr, strlen(s) + 1, s);
+	return lastentry;
+}
+
+
+/////////////error.c///////////////
+void error(char *m)				
+{
+	fprintf(stderr, "line %d;%s\n", lineno, m);
+	system("pause");
+	exit(1);			
+}
+
